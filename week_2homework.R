@@ -11,7 +11,7 @@ prob1<-prob1[prob1 >14 &prob1 <38] # in this case were selecting from problem 1
 prob1
 
 #Multiply each number in the prob1 vector by 3 to create a new vector called times3.
-#then add 10 to each number in your times3 vector to create a new vector called plus10.
+#then add 10 to each number in your times3 vector to create a new vector called plus10
 
 times3<-prob1*3
  ### cbind(prob1, 3,prob1*3)  # I just wanted to see how it would look 
