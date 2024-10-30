@@ -50,3 +50,4 @@ surveys %>%
 
 # did not do the bonus, as this took me a while to figure out. 
 # but i get the idea. pull the distribution data via code and add it to both ifelse and case_when 
+#
