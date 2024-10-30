@@ -2,9 +2,9 @@ surveys<-read.csv("data/portal_data_joined.csv")
 print(surveys)
 
 #surveys_wide<- surveys %>% 
- # filter(!is.na(weight)) %>% 
-  #group_by(genus, plot_type) %>%
-  #summarise(mean_lenght = mean(hindfoot_length))
+# filter(!is.na(weight)) %>% 
+#group_by(genus, plot_type) %>%
+#summarise(mean_lenght = mean(hindfoot_length))
 surveys_wide
 str(surveys_wide)
 unique(surveys_wide$plot_type)
@@ -35,18 +35,19 @@ weight_cat<-surveys %>%
     weight <= 20.00 ~ "small",
     weight > 20.00 & weight < 48.00 ~ "medium",
     TRUE ~ "large" 
-    )) %>% head()
+  )) %>% head()
 head(weight_cat)
 
 # okay lets try ifelse 
 # Nope did not work. So maybe just try what sebastian said 
 surveys$rodent_weight_cat <-ifelse(surveys$rodent_weight <= 20.00, "low",
-                        ifelse(surveys$rodent_weight >20 &
-                                 surveys$rodent_weight <48.00, "medium", "high"))
+                                   ifelse(surveys$rodent_weight >20 &
+                                            surveys$rodent_weight <48.00, "medium", "high"))
 surveys %>% 
   mutate(weight_cat= ifelse(weight<= 20.00, "small",
-                           ifelse(weight> 20.00 & weight < 48.00, "medium",
-                                  "large")))
+                            ifelse(weight> 20.00 & weight < 48.00, "medium",
+                                   "large")))
 
 # did not do the bonus, as this took me a while to figure out. 
 # but i get the idea. pull the distribution data via code and add it to both ifelse and case_when 
+#
