@@ -1,0 +1,69 @@
+---
+title: "Midterm - Redo"
+format: html
+Date: 12/01/2024
+editor: visual
+---
+
+## Midterm - Redo- Quarto
+
+1.  Read in the file tyler_activity_laps_10-24.csv from the class github page. This file is at url `https://raw.githubusercontent.com/ucd-cepb/R-DAVIS/refs/heads/main/data/tyler_activity_laps_10-24.csv`, so you can code that url value as a string object in R and call read_csv() on that object. The file is a .csv file where each row is a “lap” from an activity Tyler tracked with his watch.
+
+```{r}
+tyler_activity<-read.csv("https://raw.githubusercontent.com/ucd-cepb/R-DAVIS/refs/heads/main/data/tyler_activity_laps_10-24.csv")
+
+tyler_activity
+library(tidyverse)
+unique(Tyler_activity$sport)
+```
+
+2.  Filter out any non-running activities.
+3.  Next, Tyler often has to take walk breaks between laps right now because trying to change how you’ve run for 25 years is hard. You can assume that any lap with a pace above 10 minute-per-mile pace is walking, so remove those laps. You should also remove any abnormally fast laps (\< 5 minute-per-mile pace) and abnormally short records where the total elapsed time is one minute or less.
+
+```{r}
+tyler_activity2<- tyler_activity %>%
+  filter(sport == "running") %>% filter(minutes_per_mile >= 5) %>% filter(minutes_per_mile <=10)
+  
+tyler_activity2
+```
+
+4.  Create a new categorical variable, pace, that categorizes laps by pace: “fast” (\< 6 minutes-per-mile), “medium” (6:00 to 8:00), and “slow” ( \> 8:00). Create a second categorical variable, `form` that distinguishes between laps run in the year 2024 (“new”, as Tyler started his rehab in January 2024) and all prior years (“old”).
+
+```{r}
+tyler_activity2<- tyler_activity %>%
+  filter(sport == "running") %>% filter(minutes_per_mile >= 5) %>% filter(minutes_per_mile <=10) %>% 
+  mutate(mpm_cat = case_when(minutes_per_mile <= 6 ~ "fast",
+                   minutes_per_mile >=6 & minutes_per_mile <= 8 ~ "medium",
+                   T~ "slow"), form= case_when(year == 2024 ~ "new form",
+                                               T ~ 'old form'))
+  
+tyler_activity2
+```
+
+1.  Identify the average steps per minute for laps by form and pace, and generate a table showing these values with old and new as separate rows and pace categories as columns. Make sure that `slow` speed is the second column, `medium` speed is the third column, and `fast` speed is the fourth column (hint: think about what the `select()` function does).
+
+```{r}
+tyler_activity2 %>% group_by(form, mpm_cat) %>% 
+  summarize(mean_steps = mean(steps_per_minute, na.rm = T)) %>% 
+  pivot_wider(id_cols = form, values_from = mean_steps, names_from = mpm_cat) %>% 
+  select(form, slow, medium, fast)
+
+# id_cols = form: Specifies the column(s) to be used as identifiers. These columns remain the same across the new wide format.
+# values_from = mean_steps: Specifies the column containing the values that will fill the new wide-format columns.
+# names_from = mpm_cat: Specifies the column whose values will become the new column names in the wide format.
+
+# The last piece, we created these columns to go in specific order
+```
+
+1.  Finally, Tyler thinks he’s been doing better since July after the doctors filmed him running again and provided new advice. Summarize the minimum, mean, median, and maximum steps per minute results for all laps (regardless of pace category) run between January - June 2024 and July - October 2024 for comparison.
+
+    ```{r}
+    tyler_activity2 %>% filter(form == 'new form') %>%
+      mutate(months = ifelse(month %in% 1:6,'early 2024','late 2024')) %>%
+      group_by(months) %>% 
+      summarize(
+        min_spm = min(steps_per_minute),
+        mean_spm = mean(steps_per_minute),
+        max_spm = max(steps_per_minute))
+    # if the month is jannuary to june, (1 to 6), call it "early 2024", if not call it "late 2024". Creating a column called months 
+    ```

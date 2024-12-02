@@ -1,0 +1,321 @@
+---
+title: "Manipulating and analyzing data in the tidyverse, Part 2"
+author: "Marco Castaneda"
+date: 11/26/2024
+format: html
+editor: visual
+---
+
+## Data Manipulation, Part 2
+
+-   Conditional Statements: ifelse() & casewhen()
+
+-   Join two data frames together join()
+
+-   What is pivoting pivot_wider and pivot_longer
+
+## Conditional Statements
+
+-   when working with your data, you may want to create a new variable in a data frame, but only if certain conditions are true. Conditional statement are a series of logical conditions that can help you manipulate your data to create new variables. **This creates a new column!**
+
+-   summary allows you to take a look at the data distribution of specific columns
+
+    ```{r}
+    library(tidyverse)
+    surveys <-read_csv("data/portal_data_joined.csv")
+
+    summary(surveys$hindfoot_length)
+    ```
+
+## ifelse( ) function
+
+-   To do this, we define the logic: if hindfoot_length is less than the mean of 29.29, assign "small" to this new variable, otherwise assign "big" to this new variable.
+
+    -   Call it hindfoot_cat to specify the categorical variable
+
+-   We will first do this using the ifelse( ) function, where the first argument is TRUE/FALSE statement, the second argument is the new variable of the statement is true, and the argument is the new variable if the statement is false.
+
+    ```{r}
+    surveys$hindfoot_cat <-ifelse(surveys$hindfoot_length <29.29, "small", "big")
+    head(surveys$hindfoot_cat)
+    ```
+
+## Conditional Statements in the Tidyverse using case_when( )
+
+-   All you have to do is combine mutate( ) with the conditional function case_when( ). This function uses a series of two-sided formulas where the left-hand side determines and describes the condition, and the right side supplied the result. The final condition is always TRUE.
+
+-   Meaning that when the previous conditions have not been met, assign the last value. Using this function we can re-write the hindfoot_cat variable using the tidy verse.
+
+-   **CASE_WHEN** handles NA differently, if you don't state that it is there, case_when ( ) assigns whatever you tell it to use as the "fallback" last condition.
+
+```{r}
+surveys %>% 
+  mutate(hindfoot_cat = case_when(
+    hindfoot_length > 29.29 ~ "big",# first condition 
+    T ~ "small" # second condition 
+  )) %>% 
+  select(hindfoot_length, hindfoot_cat) %>% # make two columns 
+  head()
+```
+
+If we add more conditions, this cleans up a little more
+
+```{r}
+surveys %>% 
+  mutate(hindfoot_cat = case_when(
+    hindfoot_length >29.29 ~ "big",
+    is.na(hindfoot_length)~ NA_character_, 
+    T ~ "small"
+  )) %>%
+  select(hindfoot_length, hindfoot_cat) %>% 
+  head()
+```
+
+## Challenge: conditional statements
+
+Using the `iris` data frame (this is built in to R), create a new variable that categorizes petal length into three groups:
+
+-   small (less than or equal to the 1st quartile)
+
+-   medium (between the 1st and 3rd quartiles)
+
+-   large (greater than or equal to the 3rd quartile)
+
+Hint: Explore the iris data using `summary(iris$Petal.Length)`, to see the petal length distribution. Then use your function of choice: `ifelse()` or `case_when()` to make a new variable named `petal.length.cat` based on the conditions listed above. Note that in the `iris` data frame there are no NAs, so we don’t have to deal with them here.
+
+```{r}
+library(datasets)
+data(iris)
+summary(iris)
+
+
+iris %>% 
+  mutate(petal_cat = case_when(
+    Petal.Length <= 1.60 ~ "small",
+    Petal.Length >= 1.60 & Petal.Length <=5.100 ~ "medium",
+    T ~ "big")) %>% 
+  head()
+```
+
+In this case, we have already stated what all the other distribution of the data is. so if you just assign TRUE.
+
+## Joining two Data frames
+
+-   Often when working with data, it might be separated in multiple .csvs. The join() function can accomplish the task of uniting disparate data-frames together rather easy.
+
+-   There are many kinds of join(), we are going to cover left_join
+
+    -   **Left join**: Keeps all rows from the first dataset, filling in NAs for unmatched rows in the second.
+
+Let's read in another dataset. Its a tail-lengths of rodents in out surveys data frame. We want to take a specific columns of tail length and add it to our data.
+
+```{r}
+tail<- read_csv("data/tail_length.csv")
+```
+
+Two join() data sets in R must have at least one shared column (also called a key). This column is used to match rows from one dataset with rows from the other. For join to work properly, the shared column must have the same name and the same type of data in both datasets.
+
+We will be checking two datasets right now.
+
+```{r}
+summary(surveys$record_id)
+summary(tail$record_id)
+```
+
+In this case, both the surveys and tails dataset share the record_id column
+
+So now lets join the dataframes together:
+
+-   This is what the basic structure of a join looks like
+
+    -   join_type(FirstTable, SecondTable, by=columnTojoinBy)
+
+There are many different kinds of joins types:
+
+-   For our data we are going to use a left_join. We want all the rows from the survey data frame, and we want all the columns from both data frames to be in our new data frame.
+
+```{r}
+surveys_joined<- left_join(surveys, tail, by = "record_id")
+surveys_joined
+```
+
+## Challenge: 
+
+1.  Filter the data so that only species_id = NL,and call this `surveysNL`
+
+2.  Join the `tail` data to the `surveysNL` data (i.e. left join with `surveysNL` on the left). Name it `surveysNL_tail_left`. How many rows are there?
+
+3.  Join the `surveysNL` data to the `tail data` (i.e. right join with `surveysNL` on the left). Name it `surveysNL_tail_right`. How many rows are there?
+
+```{r}
+surveysNL<- surveys %>% 
+  filter(species_id == "NL")
+colnames(surveysNL)
+# left join 
+surveysNL_tail_left<- left_join(surveysNL, tail, by = "record_id")
+nrow(surveysNL_tail_left)
+
+#right join 
+surveysNL_tail_right<- right_join(surveysNL, tail, by = "record_id")
+nrow(surveysNL_tail_right)
+```
+
+**Left Join (`left_join()`)**: Includes all rows from the left (first) data frame and only matching rows from the right (second) data frame. Non-matching rows from the right data frame are excluded, but rows from the left that have no matches will still appear with `NA` values for the right-side columns.
+
+Because of this, depending on the join type, the number of columns change.
+
+## Reshaping with Pivot functions
+
+In the spreadsheet lesson, we discussed how to structure our data leading to the four rules defining a tidy dataset:
+
+1.  Each variable in its own column
+2.  Each observation has its own row
+3.  Each value must have its own cell
+4.  Each type of observational unit forms a table
+
+We will focus on **Each type of observational unit forms a table**
+
+In your `surveys` dataset:
+
+-   Each row represents **one record** (an observation of an animal).
+
+-   It includes information like the **species** of the animal, its **weight**, and the **plot** where it was found.
+
+Now, instead of looking at individual records, you want to **summarize** the data. Specifically:
+
+-   You want to calculate the **average weight** of each species in each plot.
+
+-   This means grouping the data first by **species** and then by **plot**, and calculating the mean weight for each group.
+
+## Pivot_wider: 
+
+widens the data by increasing the number of columns and decreasing the number of rows.
+
+1.  the data
+2.  names_from the name of the column you'd like to spread out
+3.  values_from the data you want to fill all your new columns with
+
+### It's easier to structure the data prior to pivoting: 
+
+Example from surveys. Let's pretend we're interested in the mean weights for each species in each plot. How would we create a data frame that would tell us this.
+
+```{r}
+ surveys_mz<-surveys %>% 
+   filter(!is.na(weight)) %>% 
+   group_by(genus, plot_id) %>% 
+   summarise(mean_weight = mean(weight))
+ surveys_mz
+ 
+ str(surveys_mz)
+```
+
+There are 196 rows and 3 columns, with pivot wider, we are going to increase the number of columns, and decrease the number of rows. So in this case, the rows will be plot ids, and the firs column will be genus.
+
+```{r}
+unique(surveys_mz$genus)
+n_distinct(surveys$plot_id)
+# this tells us that we will have 10 rows and I think like 26 different columns 
+```
+
+Okay so now we have an idea. let's try to write some code:
+
+```{r}
+wide_survey<- surveys_mz %>% 
+  pivot_wider(names_from = "plot_id", values_from = "mean_weight")
+wide_survey
+```
+
+## Pivot_longer: 
+
+Pivot_longer lengthens data by increasing the number of rows and decreasing the number of columns. This function has 4 main parts
+
+1.  the data
+2.  cols- the number of columns to (ignore) or be part of the pivot.
+3.  names_to - The name of the new column where all the other column names will be listed as rows.
+4.  Values_to the name of the new column to put the column values in
+
+![](images/pivot_longer.jpg)
+
+Let’s pretend that we got sent the dataset we just created (`wide_survey`) and we want to reshape it to be in a long format. We can easily do that using `pivot_longer`
+
+```{r}
+#cols = columns to be pivoted. Here we want to pivot all the plot_id columns, except the colum "genus"
+
+#names_to = the name of the new column we created from the cols' argument 
+
+# values_to = the name of the new column we will put our values in 
+
+surveys_long <- wide_survey %>% 
+  pivot_longer(cols = -genus, names_to = "plot_id", values_to = "mean_weight")
+surveys_long
+```
+
+In this case we see that there are couple of NAs in the dataset. Which is good, cause we want to remove them. That way every replicate has the same composition.
+
+```{r}
+surveys_long <- surveys_long %>% 
+  filter(!is.na(mean_weight))
+
+view(surveys_long)
+```
+
+## Challenge: 
+
+1.  Use `pivot_wider` on the `surveys` data frame with `year` as columns, `plot_id` as rows, and the number of genera per plot as the values. You will need to summarize before reshaping, and use the function `n_distinct()` to get the number of unique genera within a particular chunk of data.
+
+    ```{r}
+    surveys1<- surveys %>% 
+      group_by(year, plot_id) %>% 
+      summarize(unique_genera =n_distinct(genus))
+    surveys1
+
+    surveys1_long<-surveys1 %>%
+      pivot_wider(names_from = "year", values_from = "unique_genera")
+    head (surveys1_long)
+    ```
+
+2.  The `surveys` data set has two measurement columns: `hindfoot_length` and `weight`. This makes it difficult to do things like look at the relationship between mean values of each measurement per year in different plot types. Let’s walk through a common solution for this type of problem. First, use `pivot_longer()` to create a dataset where we have a new column called `measurement` and a `value` column that takes on the value of either `hindfoot_length` or `weight`. *Hint*: You’ll need to specify which columns are being selected to make longer.\
+    Then with this new data set, calculate the average of each `measurement` for each different `plot_type`. Then use `pivot_wider()` to get them into a data set with a column for `hindfoot_length` and `weight`. *Hint*: You only need to specify the `names_from =` and `values_from =` columns
+
+```{r}
+surveys2<- surveys %>% 
+  pivot_longer(cols = c("hindfoot_length", "weight"), names_to = "measurement_type", values_to = "value")
+
+surveys3<- surveys2 %>% 
+  group_by(measurement_type, plot_type) %>% 
+  summarize(mean_value = mean(value, na.rm = TRUE)) %>% 
+  pivot_wider(names_from = "measurement_type", values_from = "mean_value")
+surveys3
+```
+
+## Homework: 
+
+1.  Create a tibble named `surveys` from the portal_data_joined.csv file. Then manipulate `surveys` to create a new dataframe called `surveys_wide` with a column for genus and a column named after every plot type, with each of these columns containing the mean hindfoot length of animals in that plot type and genus. So every row has a genus and then a mean hindfoot length value for every plot type. The dataframe should be sorted by values in the Control plot type column. This question will involve quite a few of the functions you’ve used so far, and it may be useful to sketch out the steps to get to the final result.
+
+```{r}
+library(tidyverse)
+surveys <-read_csv("data/portal_data_joined.csv")
+
+
+# pivot wider: 
+
+surveysw <- surveys %>% 
+  group_by(plot_type, genus) %>% 
+  summarize(mean_hindfoot_length = mean(hindfoot_length)) %>% 
+  pivot_wider(names_from = "plot_type", values_from = mean_hindfoot_length) %>% arrange(Control)
+surveysw
+
+
+```
+
+2.  Using the original `surveys` dataframe, use the two different functions we laid out for conditional statements, ifelse() and case_when(), to calculate a new weight category variable called `weight_cat`. For this variable, define the rodent weight into three categories, where “small” is less than or equal to the 1st quartile of weight distribution, “medium” is between (but not inclusive) the 1st and 3rd quartile, and “large” is any weight greater than or equal to the 3rd quartile. (Hint: the summary() function on a column summarizes the distribution). For ifelse() and case_when(), compare what happens to the weight values of NA, depending on how you specify your arguments.
+
+```{r}
+summary(surveys$weight)
+weight_cat1<-surveys %>% 
+  mutate(!is.na(weight)) %>%
+  mutate(weight_cat = case_when(weight <20.00 ~ "small",
+            weight>= 20.00 & weight<=48.00 ~ "medium",
+            weight > 48.00 ~ "Large"))
+weight_cat1
+```
