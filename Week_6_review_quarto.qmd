@@ -1,0 +1,253 @@
+---
+title: "Data Visualization Part 1"
+author: "Marco Castaneda"
+date: 12/3/2024
+format: html
+editor: visual
+---
+
+# Data visualization with ggplot2
+
+-   Produce scatter plots, box plots, and time series plots using ggplot
+
+-   Describe what faceting is and apply faceting in ggplot
+
+-   set universal plot setting
+
+```{r}
+library(tidyverse)
+
+# we cant rows where all the data is present so we can have cleaner graphs 
+surveys_complete <- read_csv("data/portal_data_joined.csv") %>% 
+  filter(complete.cases(.))
+surveys_complete
+
+library(ggplot2)
+# likes the data in long format, that is why the use pivot longer here. 
+```
+
+GGplot basic template:
+
+```         
+ggplot(data = <DATA>, mapping = aes(<MAPPINGS>)) +  <GEOM_FUNCTION>()
+```
+
+```{r}
+ggplot(data= surveys_complete)
+ggplot(data= surveys_complete, aes(x=weight, y= hindfoot_length))+geom_point()
+```
+
+## Notes: 
+
+-   Anything you put in the ggplot( ) function can be seen by any geom layers that you add.
+
+-   You can also specify mappings for a given geom independently of the mappings defined globaly by ggplot()
+
+-   Use the + to add them together.
+
+## Building Your Plots iteratively 
+
+we can add the following
+
+-   alpha (transparency ) to avoid over plotting
+
+-   color inside of the geompoint
+
+-   color each species differently by adding aes function inside of geom_point ( )
+
+-   The above can be done universally by adding it inside the aes that is part of ggplot ( )
+
+```{r}
+ggplot(data = surveys_complete, mapping = aes(x = weight, y = hindfoot_length, color = species_id)) +
+    geom_point(alpha = 0.1)
+```
+
+## Challenge: 
+
+Use `ggplot()` to create a scatter plot of `weight` and `species_id` with weight on the Y-axis, and species_id on the X-axis. Have the colors be coded by `plot_type`. Is this a good way to show this type of data? What might be a better graph?
+
+```{r}
+ggplot(data= surveys_complete, mapping = aes(x= species_id, y=weight, color= plot_type))+
+  geom_col()
+str("species_id")
+```
+
+## Boxplot: 
+
+We can use box plots to visualize the distribution of weight within each species.
+
+we can add:
+
+-   points to the boxplot : geom_jitter
+
+```{r}
+ggplot(data = surveys_complete, mapping = aes(x = species_id, y = weight)) +
+  geom_boxplot() + geom_jitter(alpha= 0.2, colour = "tomato")
+```
+
+## Challenges: 
+
+1.  Boxplots are useful summaries, but hide the *shape* of the distribution. For example, if the distribution is bimodal, we would not see it in a boxplot. An alternative to the boxplot is the violin plot, where the shape (of the density of points) is drawn.
+
+-   Replace the box plot code from above with a violin plot; see `geom_violin()`.
+
+    ```{r}
+    ggplot(data = surveys_complete, mapping = aes(x = species_id, y = weight)) + geom_violin() + geom_jitter(alpha= 0.2, colour = "tomato")+scale_y_log10()
+    ```
+
+-   In many types of data, it is important to consider the *scale* of the observations. For example, it may be worth changing the scale of the axis to better distribute the observations in the space of the plot. Changing the scale of the axes is done similarly to adding/modifying other components (i.e., by incrementally adding commands). Try making these modifications:
+
+<!-- -->
+
+-   Use the violin plot you made in Q1 and adjust the weight to be on the log~10~ scale; see `scale_y_log10()`.
+
+3.  Make a new plot to explore the distribution of `hindfoot_length` just for species NL and PF using `geom_boxplot()`. Overlay a jitter/scatter plot of the hindfoot lengths of the two species behind the boxplots. Then, add an `aes()` argument to color the datapoints (but not the boxplots) according to the plot from which the sample was taken.
+
+    In simple terms, this line is a filter that picks out rows of data where the `species_id` is either `"NL"` or `"PF"`. It’s like saying, “Show me only the rows where the species ID matches one of these two values.”
+
+    ```{r}
+    surveys_complete %>% 
+      filter(species_id == "NL"| species_id =="PF") %>% 
+      ggplot(mapping= aes(x= species_id, y=hindfoot_length))+
+      geom_jitter(alpha=0.2, aes(color= as.factor(plot_id)))+
+      geom_boxplot()
+
+      
+    ```
+
+*Hint:* Check the class for `plot_id`. Consider changing the class of `plot_id` from integer to factor. Why does this change how R makes the graph?
+
+## Plotting time series data
+
+-   lets calculate number of counts per year for each species. First we need to group the data and count records within each group. We can quickly use the dplyr function `count` to do this. `count` is very similar to the function `tally` we have seen before, but it interally calls `group_by` before the function and `ungroup` after.
+
+    ```{r}
+    yearly_counts<- surveys_complete %>% 
+      count(year, species_id)
+
+    ggplot(data = yearly_counts, mapping= aes(x= year, y=n))+
+      geom_line()
+
+    # looks gross, draw a line for each species 
+    ggplot(data = yearly_counts, mapping= aes(x= year, y=n, colour=species_id))+
+      geom_line()
+    ```
+
+## Faceting 
+
+faceting allows you to split one plot into multiple plots based on the factors included in the dataset. We will use it to make a time series plot for each species:
+
+```{r}
+ggplot(data= yearly_counts, mapping= aes(x=year, y=n))+
+  geom_line()+
+  facet_wrap(~species_id)
+```
+
+## Challenge: 
+
+You are looking at a new dataset shared with you by a collaborator. You received the dataset shortly after the vernal equinox. Your collaborator didn’t really give you any context on what the data represent, and you need to do some preliminary visualizations before you can really even formulate a question for them. Import the mystery dataset using:
+
+```{r}
+mystery <- read_csv("https://raw.githubusercontent.com/gge-ucd/R-DAVIS/master/data/mysteryData.csv")
+
+head(mystery)
+
+ggplot(data=mystery, mapping =aes(x=x, y=y))+
+  facet_wrap(~Group)+
+  geom_point(size=0.1, alpha =0.1)
+
+# you look at the head, and you realize that another geom might fit it better. 
+```
+
+## GGplot 2 themes -
+
+Ggplot has a lot of themes, that allow your data to look more presentable.
+
+-   theme_bw ( )
+
+-   theme_light ( )
+
+-   theme_void ( )
+
+Lets check some out: \
+
+```{r}
+ ggplot(data = yearly_counts, mapping = aes(x = year, y = n)) +
+     geom_line() +
+     facet_wrap(~ species_id) +
+     theme_bw() +
+     theme(panel.grid = element_blank())
+```
+
+```{r}
+yearly_sex_counts <-surveys_complete %>% 
+  count(year, species_id, sex)
+
+# count(year, species, sex): Groups the data by year, species, and sex and counts the occurrences for each group. The resulting column n contains the counts.
+
+ ggplot(data = yearly_sex_counts, mapping = aes(x = year, y = n, colour = sex)) +
+     geom_line() +
+     facet_wrap(~ species_id) +
+     theme_bw()
+```
+
+## Challenge 2
+
+Use what you just learned to create a plot that depicts how the average weight of each species changes through the years.
+
+```{r}
+head(yearly_counts)
+yearly_counts_avg<- surveys_complete %>% 
+  group_by(year, species_id) %>% 
+  summarize(avg_weight = mean(weight))
+yearly_counts_avg
+ggplot(data = yearly_counts_avg, mapping = aes(x = year, y = avg_weight, colour = species_id)) +
+     geom_line() +
+     facet_wrap(~ species_id) +
+     theme_bw()
+```
+
+## Week 6 Homework: 
+
+```{r}
+library(tidyverse)
+
+gapminder <- read_csv("https://ucd-r-davis.github.io/R-DAVIS/data/gapminder.csv") #ONLY change the "data" part of this path if necessary
+```
+
+1.  First calculates mean life expectancy on each continent. Then create a plot that shows how life expectancy has changed over time in each continent. Try to do this all in one step using pipes! (aka, try not to create intermediate dataframes)
+
+    ```{r}
+    head(gapminder)
+    gapminder_mean<-gapminder %>% 
+      group_by(year, continent) %>% 
+      summarize(avg_life=mean(lifeExp)) 
+
+    p<-ggplot(data = gapminder_mean, mapping =aes(x = year, y = avg_life, color = continent))+geom_point()+geom_line()+scale_x_log10()
+    p
+    ```
+
+2.  Look at the following code and answer the following questions. What do you think the `scale_x_log10()` line of code is achieving? What about the `geom_smooth()` line of code?
+
+-   The log 10 is making every point proportional on the graph so the flow is not so skewed.
+
+-   Geom smooth just connects the lines without such hard breaks.
+
+```{r}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp)) +
+    geom_point(aes(color = continent, size = pop)) + 
+    scale_x_log10() +
+    geom_smooth(method = 'lm', color = 'black', linetype = 'dashed') +
+    theme_bw()
+```
+
+```{r}
+head(gapminder)
+unique(gapminder$country)
+
+countries <-c( "Brazil", "China", "El Salvador", "Niger", "United States")
+
+gapminder %>% filter(country %in% countries) %>% ggplot(aes(x=country, y=lifeExp))+
+  geom_boxplot()+geom_jitter(alpha = 0.4, colour ="blue" )+
+  theme_light()+ xlab("Country")+ylab("Life Expectancy")+ ggtitle("Life Expectancy of 5 countries")+theme(plot.title = element_text(hjust = 0.5))
+```
