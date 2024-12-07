@@ -1,0 +1,137 @@
+---
+title: "Data Visualization II"
+author: "Marco Castaneda"
+date: 12/06/2024
+format: html
+editor: visual
+---
+
+## Data Visualization Best Practices 
+
+Objectives:
+
+-   Learn visualization dos and don'ts.
+
+-   Learn How to customize color in plots.
+
+-   Gain a basic understanding of package "cowplot"
+
+-   Introduction to interactive "Plotly" package.
+
+## Customizing Color Palettes in ggplot 
+
+Use the Viridis color palette.
+
+```{r}
+library(ggplot2)
+
+ggplot(diamonds, aes(x = clarity, fill = cut)) + 
+  geom_bar() +
+  theme(axis.text.x = element_text(angle=70, vjust=0.5)) +
+  scale_fill_viridis_d(option = "C") +
+  theme_classic()
+```
+
+## Visualization Tips.
+
+Types of plots:
+
+-   Scatter plots: One of the best simple plots for examining patterns in data, but very effective. Also used when adding model trend lines.
+
+-   Line plots: Comparing relative change in quantities across a variable like time. Note the change when we avoid faceting each line independently.
+
+-   Bar plots: Comparing totals across multiple groups. Think of how cluttered some of these bars can be.
+
+    ```{r}
+    plot(EuStockMarkets)
+
+    barplot(table(iris$Species,iris$Sepal.Length),col  = viridis(3, option = "A"))
+
+
+    ```
+
+## Publishing plots: COWPLOT: 
+
+With `cowplot`, it’s possible to quickly combine existing `ggplots`, creating publication quality plots. See the vignette for more options, but here’s a quick example from the vignette below:
+
+```{r}
+library(cowplot)
+
+# make a few plots:
+plot.diamonds <- ggplot(diamonds, aes(clarity, fill = cut)) + 
+  geom_bar() +
+  theme(axis.text.x = element_text(angle=70, vjust=0.5))
+#plot.diamonds
+
+plot.cars <- ggplot(mpg, aes(x = cty, y = hwy, colour = factor(cyl))) + 
+   geom_point(size = 2.5)
+#plot.cars
+
+plot.iris <- ggplot(data=iris, aes(x=Sepal.Length, y=Petal.Length, fill=Species)) +
+  geom_point(size=3, alpha=0.7, shape=21)
+#plot.iris
+
+# use plot_grid
+panel_plot <- plot_grid(plot.cars, plot.iris, plot.diamonds, labels=c("A", "B", "C"), ncol=2, nrow = 2)
+panel_plot
+
+```
+
+## Homework: 
+
+The x axis labels are all scrunched up because we can’t make the image bigger on the webpage, but if you make it and then zoom it bigger in RStudio it looks much better.
+
+We’ll touch on some intermediate steps here, since it might take quite a few steps to get from start to finish. Here are some things to note:
+
+1.  To get the population difference between 2002 and 2007 for each country, it would probably be easiest to have a country in each row and a column for 2002 population and a column for 2007 population.
+
+2.  Notice the order of countries within each facet. You’ll have to look up how to order them in this way.
+
+3.  Also look at how the axes are different for each facet. Try looking through `?facet_wrap` to see if you can figure this one out.
+
+4.  The color scale is different from the default- feel free to try out other color scales, just don’t use the defaults!
+
+5.  The theme here is different from the default in a few ways, again, feel free to play around with other non-default themes.
+
+6.  The axis labels are rotated! Here’s a hint: `angle = 45, hjust = 1`. It’s up to you (and Google) to figure out where this code goes!
+
+7.  Is there a legend on this plot?
+
+This lesson should illustrate a key reality of making plots in R, one that applies as much to experts as beginners: 10% of your effort gets the plot 90% right, and 90% of the effort is getting the plot perfect. `ggplot` is incredibly powerful for exploratory analysis, as you can get a good plot with only a few lines of code. It’s also extremely flexible, allowing you to tweak nearly everything about a plot to get a highly polished final product, but these little tweaks can take a lot of time to figure out!
+
+So if you spend most of your time on this lesson googling stuff, you’re not alone!
+
+```{r}
+library(tidyverse)
+gapminder <- read_csv("https://ucd-r-davis.github.io/R-DAVIS/data/gapminder.csv")
+colnames(gapminder)
+str(gapminder)
+summary(gapminder)
+head(gapminder)
+# part 1, in this case, first i would pivot wider, then after that mutate to get 
+# the population difference from 2002 to 2007 
+
+gapminder2 <- gapminder %>% 
+  select(pop,continent, year, country) %>%# this is for selecting columns, NOT ROWS
+  filter(year >=2002 & year<=2007) %>%
+  filter(continent != "Oceania") %>% # now you can choose which rows you want to see
+  pivot_wider(names_from = year, values_from = pop) %>% 
+  mutate(popchange= `2007`-`2002`)# you mutate AFTER THE pivot, doing it before, make it turn out weird for you. 
+gapminder2  # this was stupid, the column names took a long time to transfer over.
+
+
+# part two, you should be using the facet function from two weeks ago. 
+install.packages("wesanderson")
+library(wesanderson)
+wes_anderson()
+
+facet<-ggplot(gapminder2, aes(x= reorder(country, popchange), y= popchange))+ # this is what he meant, it looks better when its reordered
+  geom_col(aes(fill=continent))+# fills in the columns # bar did not work 
+  facet_wrap(~continent, scales = "free")+  # this is to create the table, you can also create the graphs, then make a table. 
+  ggtitle("Population Change as A Function of Time")+ # adds title 
+  theme(plot.title = element_text(hjust = 0.5),axis.text.x = element_text(angle = 60, hjust = 0.5, vjust = 0.5),legend.position="none")+ # cleans the x asis within the graphs
+  xlab("Nations")+ylab("Population Change from 2002 to 2007")+ # do not contradict the themes
+  scale_fill_manual(values = wes_palette(5, name = "Zissou1", type = "discrete"), name = "") # use the wes anderson color pallete. 
+  
+facet  
+```
