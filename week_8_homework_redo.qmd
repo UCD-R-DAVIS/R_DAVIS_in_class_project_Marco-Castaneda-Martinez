@@ -1,0 +1,152 @@
+---
+title: "Dates & Times in R"
+author: "Marco Castaneda"
+date:12/09/2024
+format: html
+editor: visual
+---
+
+# Dates & Times in R
+
+Working with Lubridate
+
+### Learning Objectives
+
+-   Learn the basic date/datetime types in R
+
+-   Gain familiarity with converting dates and timezones
+
+-   Learn how to use the `lubridate` package
+
+-   Tips and tricks about management of datetime data
+
+### 3 Basic Date-time classes in R
+
+-   **`Dates`** (just dates, i.e., 2012-02-10)
+
+-   **`POSIXct`** (“**ct**” == calendar time, best class for dates with times)
+
+-   **`POSIXlt`** (“**lt**” == local time, enables easy extraction of specific components of a time, however, remember that POXIXlt objects are lists)
+
+### Dates:
+
+The date class in R can be converted or operated on, numerically, depending on the interest. Let's make a string of dates to use for example.
+
+```{r}
+sample_dates_1 <- c("2018-02-01", "2018-03-21", "2018-10-05", "2019-01-01", "2019-02-18")
+class(sample_dates_1)
+
+# lets transform them to dates
+
+sample_dates_1<-as.Date(sample_dates_1)
+sample_dates_1
+class(sample_dates_1)
+
+# now they are in date structure. 
+```
+
+### If the sample dates are in different order:
+
+It will not work because the compute expects one thing: but is getting something else. Remember, **write code you can read and your computer can understand**. So we need to give some more information here so R will interpret our data correctly.
+
+Here is how to fix the structure so it can read it:
+
+```{r}
+sample_dates_2 <- c("02-01-2018", "03-21-2018", "10-05-2018", "01-01-2019", "02-18-2019")
+
+sample_dates_3 <- as.Date(sample_dates_2, format= "%m-%d-%y")
+
+?(strptime)
+
+# The nice thing is this method works well with pretty much any format, you just need to provide the associated codes and sturcture. 
+
+#Challenge 
+
+as.Date("Jul 04, 2019", format = "%b%d,%Y")
+
+# working with times in Base R
+tm1 <- as.POSIXct("2016-07-24 23:55:26")
+tm1
+
+tm2 <- as.POSIXct("25072016 08:32:07", format = "%d%m%Y %H:%M:%S")
+tm2
+
+# to specify timezone 
+tm3 <- as.POSIXct("2010-12-01 11:42:03", tz = "GMT")
+tm3
+```
+
+## The Lubridate Package
+
+The lubridate package will handle 90% of the date & datetime issues you need to deal with. It is fast, much easier, to work with and we recommend using it whenever possible.
+
+```{r}
+install.packages("lubridate")
+library(lubridate)
+
+sample_dates_1 <- c("2018-02-01", "2018-03-21", "2018-10-05", "2019-01-01", "2019-02-18")
+sample_dates_1<-ymd(sample_dates_1)
+sample_dates_1
+
+
+# what about messier datasets?  If you notice, even some characters are missing. 
+sample_dates_2 <- c("2-01-2018", "3-21-2018", "10-05-18", "01-01-2019", "02-18-2019")
+sample_dates_lub2<-mdy(sample_dates_2)
+sample_dates_lub2
+```
+
+## All sorts of date formats can easily be transformed using `lubridate`:
+
+-   `lubridate::ymd("2016/01/01")`=2016-01-01
+
+-   `lubridate::ymd("2011-03-19")`=2011-03-19
+
+-   `lubridate::mdy("Feb 19, 2011")`=2011-02-19
+
+-   `lubridate::dmy("22051997")`=1997-05-22
+
+## Using `lubridate` for Time and Timezones
+
+`lubridate` has very similar functions to handle data with Times and Timezones. To the `ymd` function, add `_hms` or `_hm` (h= hours, m= minute, s= seconds) and a `tz` argument. `lubridate` will default to the POSIXct format.
+
+```{r}
+lubridate::ymd_hm("2016-01-01 12:00", tz="America/Los_Angeles")
+lubridate::ymd_hm("2016/04/05 14:47", tz="America/Los_Angeles") # can read 24 hr time
+lubridate::ymd_hms("2016/04/05 4:47:21 PM", tz="America/Los_Angeles") # 12 hr time but converts to 24
+```
+
+## Homework
+
+```{r}
+library(tidyverse)
+mloa <- read_csv("https://raw.githubusercontent.com/gge-ucd/R-DAVIS/master/data/mauna_loa_met_2001_minute.csv")
+
+head(mloa)
+```
+
+1.  With the `mloa` data.frame, remove observations with missing values in rel_humid, temp_C_2m, and windSpeed_m_s. Generate a column called “datetime” using the year, month, day, hour24, and min columns.
+
+2.  Generate a column called “datetime” using the year, month, day, hour24, and min columns. Next, create a column called “datetimeLocal” that converts the datetime column to Pacific/Honolulu time (*HINT*: look at the lubridate function called `with_tz()`).
+
+    ```{r}
+    mloa2 <- mloa %>% 
+      # Filter invalid data values
+      filter(rel_humid != -99, temp_C_2m != -999.9, windSpeed_m_s != -999.9) %>% 
+      # Create datetime and convert to local time zone
+      mutate(datetime = make_datetime(year = year, month = month, day = day, hour = hour24, min = min),
+             datetimeLocal = with_tz(datetime, tz = "Pacific/Honolulu"),
+             localMon = month(datetimeLocal, label = TRUE),
+             localHour = hour(datetimeLocal)) 
+
+    # Summarize and plot
+    mloa_summary <- mloa2 %>% 
+      group_by(localMon, localHour) %>% 
+      summarize(meantemp = mean(temp_C_2m, na.rm = TRUE), .groups = 'drop')
+
+    ggplot(mloa_summary, aes(x = localMon, y = meantemp)) + 
+      geom_point(aes(col = localHour)) + 
+      scale_color_continuous() + 
+      xlab("Month") + 
+      ylab("Mean Temperature (°C)") + 
+      theme_classic()
+    ```
